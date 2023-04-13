@@ -1,0 +1,150 @@
+##First step
+## Install packages (once and for all)
+install.packages(c("RCurl", "XML",'httr'))
+install.packages(c("stringr", "xml2", "magrittr"))
+#Load packages (every time)
+library(RCurl)
+library(XML)
+library(httr)
+library(magrittr)
+library(curl)
+
+save_path <- 'Path to store downloaded files'
+
+##Second step, check the info
+## Go and visit this page with your browser : 
+# http://www.perdu.com
+
+## Build your first browser to collect the content
+url <- 'http://www.perdu.com'
+
+# while getURL gives you the content of the page
+# this return a "response"-object 
+# Using the httr-package
+GET(url)
+
+## store the result in an object called 'rawpage'
+rawpage <- GET(url)
+
+# extract "body of the request"  with httr packages
+# as= 'raw' gives you bytes instead of text
+content(rawpage, as = 'raw')
+
+# as= 'text' gives you the text
+content(rawpage, as = 'text')
+
+# as= 'parsed' gives you the parsed text
+content(rawpage, as = 'parsed')
+
+# You can also provide the encoding into content
+content(rawpage, encoding = 'UTF-8', as = 'text')
+
+#If you look into the structure of rawpage, you will see the many options it has
+str(rawpage)
+
+#Sometimes, it can be useful to write the page locally (on your hard drive)
+#this will place the document in the working directory of your computer
+writeLines(content(rawpage, encoding = 'UTF-8', as = 'text'), "perdu.html")
+
+readLines("perdu.html")
+typeof(htmlParse(readLines("perdu.html")))
+
+## You can also restructure the content of rawpage using htmlParse()
+tpage <- htmlParse(rawpage) # parse simple
+#Note:this is somewhat similar to
+GET(url, as = 'parsed')
+
+############ Exercise 
+#Consider the page https://www.flashback.org/login.php
+# (login= LiuKonto, password= MinPass2000)
+#1. Write a scraper that enters the credentials
+#2. Scrape the index page
+#3. Write it on your hard drive (writeLines) to make sure everything works
+
+##solution
+#1
+library(httr)
+login <- "https://www.flashback.org/login.php"
+pars <- list(
+  vb_login_username = "LiuKonto",
+  vb_login_password = "MinPass2000",
+  do = "login")
+
+dat <- POST(login, body = pars)
+
+#2.
+dat1 <- GET("https://www.flashback.org/index.php")
+
+#3. 
+writeLines(as.character(content(dat1)), "testFB.html")
+
+
+############ Exercise 
+Try to scrape https://css.cnrs.fr/scrape/reperdue
+#1. If you do not manage to do so, why do you think this is the case?
+#2. Make it work!
+
+#1.It won't work because you need to accept cookies (and javascript)
+
+#2.There are several ways to do this. 
+
+a. Oldies but goodies, getURL, from the RCurl package
+library(RCurl)
+
+## Activate cookies
+mycurl <- getCurlHandle()
+curlSetOpt(cookiejar= "Rcookies", curl = mycurl)
+
+## Download the page getURL
+rp.curl <- getURL("https://css.cnrs.fr/scrape/reperdue", curl = mycurl)
+rp.curl
+
+## Dowload, with correct encoding
+rp.curl <- getURL("https://css.cnrs.fr/scrape/reperdue", curl = mycurl, 
+                  .encoding= "ISO-8859-1")
+                  
+writeLines(rp.curl, "reperdue-rcurl.html")
+
+                  
+b. Right click on the page, save as, save on your local drive then
+htmlParse("~/Downloads/perducookies.html")
+
+c. Use a headless browser (Selenium, etc)
+
+some difficulties may emerge [ADVANCED]
+#The website may move. 
+#If you look at the address below, you'll see that it is taking you to a new place within seconds
+url2 <- 'https://www.nrcresearchpress.com/journal/cjfas'
+
+# with GET we see that the webpage has moved (look at the text in red in detail)
+rawpage2 <- GET(url2,
+                config = httr::config(connecttimeout = 50,
+                                      verbose  = TRUE))
+                                   
+# Trick to find new locations of the page (advanced)
+new_location <- stringr::str_extract(grep(curlGetHeaders(url2), 
+                                          pattern = "Location", value = T), 
+                                     pattern = "https://.*")
+
+rawpage2 <- GET(url = new_location[2], 
+                config = httr::config(timeout = 100),
+                verbose())
+
+tpage2 <- htmlParse(rawpage2)
+tpage2
+
+
+########################### THE END 
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+
+
+
